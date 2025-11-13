@@ -24,7 +24,8 @@ function loadGameState() {
             const tileCount = Object.keys(loaded.tiles || {}).length;
             const cloudCount = (loaded.clouds || []).length;
             const sunCount = (loaded.suns || []).length;
-            console.log(`✅ Loaded ${blockCount} blocks, ${tileCount} tiles, ${cloudCount} clouds, ${sunCount} suns from saved state`);
+            const rainbowCount = (loaded.rainbows || []).length;
+            console.log(`✅ Loaded ${blockCount} blocks, ${tileCount} tiles, ${cloudCount} clouds, ${sunCount} suns, ${rainbowCount} rainbows from saved state`);
             
             if (loaded.lastSaved) {
                 console.log(`📅 Last saved: ${loaded.lastSaved}`);
@@ -35,6 +36,8 @@ function loadGameState() {
                 tiles: loaded.tiles || {}, // Terrain tiles
                 clouds: loaded.clouds || [],
                 suns: loaded.suns || [],
+                rainbows: loaded.rainbows || [], // Rainbows
+                backgroundColor: loaded.backgroundColor || 0x87CEEB, // Background color (default sky blue)
                 users: {} // Users are temporary, don't save them
             };
         } else {
@@ -49,6 +52,8 @@ function loadGameState() {
         tiles: {}, // Terrain tiles (floor tiles)
         clouds: [],
         suns: [],
+        rainbows: [], // Rainbows
+        backgroundColor: 0x87CEEB, // Background color (default sky blue)
         users: {}
     };
 }
@@ -64,11 +69,13 @@ function saveGameState() {
             tiles: gameState.tiles, // Terrain tiles
             clouds: gameState.clouds,
             suns: gameState.suns,
+            rainbows: gameState.rainbows, // Rainbows
+            backgroundColor: gameState.backgroundColor, // Background color
             lastSaved: new Date().toISOString()
         };
         const dataString = JSON.stringify(dataToSave, null, 2);
         fs.writeFileSync(STATE_FILE, dataString, 'utf8');
-        console.log(`💾 Saved game state: ${Object.keys(gameState.blocks).length} blocks, ${Object.keys(gameState.tiles).length} tiles, ${gameState.clouds.length} clouds, ${gameState.suns.length} suns`);
+        console.log(`💾 Saved game state: ${Object.keys(gameState.blocks).length} blocks, ${Object.keys(gameState.tiles).length} tiles, ${gameState.clouds.length} clouds, ${gameState.suns.length} suns, ${gameState.rainbows.length} rainbows, background: #${gameState.backgroundColor.toString(16)}`);
         return true;
     } catch (error) {
         console.error('❌ Error saving game state:', error.message);
@@ -94,7 +101,7 @@ process.on('uncaughtException', (error) => {
 
 // Periodic save every 5 seconds as a safety net
 setInterval(() => {
-    if (Object.keys(gameState.blocks).length > 0 || Object.keys(gameState.tiles).length > 0 || gameState.clouds.length > 0 || gameState.suns.length > 0) {
+    if (Object.keys(gameState.blocks).length > 0 || Object.keys(gameState.tiles).length > 0 || gameState.clouds.length > 0 || gameState.suns.length > 0 || gameState.rainbows.length > 0) {
         saveGameState();
     }
 }, 5000); // Save every 5 seconds
@@ -123,9 +130,11 @@ io.on('connection', (socket) => {
         tiles: gameState.tiles, // Terrain tiles
         clouds: gameState.clouds,
         suns: gameState.suns,
+        rainbows: gameState.rainbows, // Rainbows
+        backgroundColor: gameState.backgroundColor, // Background color
         userId: socket.id
     };
-    console.log(`📤 Sending initial state to ${socket.id}: ${Object.keys(gameState.blocks).length} blocks, ${Object.keys(gameState.tiles).length} tiles, ${gameState.clouds.length} clouds, ${gameState.suns.length} suns`);
+    console.log(`📤 Sending initial state to ${socket.id}: ${Object.keys(gameState.blocks).length} blocks, ${Object.keys(gameState.tiles).length} tiles, ${gameState.clouds.length} clouds, ${gameState.suns.length} suns, ${gameState.rainbows.length} rainbows, background: #${gameState.backgroundColor.toString(16)}`);
     socket.emit('initial-state', initialState);
     
     // Send user count to all clients
@@ -290,6 +299,83 @@ io.on('connection', (socket) => {
         
         // Broadcast to ALL clients including the sender
         io.emit('blocks-removed-batch', { keys });
+    });
+    
+    // Handle rainbow placement
+    socket.on('place-rainbow', (data) => {
+        try {
+            const { id, x, y, z } = data;
+            
+            if (!id || x === undefined || y === undefined || z === undefined) {
+                console.error('❌ Invalid rainbow data received:', data);
+                return;
+            }
+            
+            console.log(`🌈 Received rainbow placement from ${socket.id}:`, { id, x, y, z });
+            
+            // Store the rainbow
+            gameState.rainbows.push({ id, x, y, z });
+            
+            // Save to file immediately
+            const saved = saveGameState();
+            if (!saved) {
+                console.error('❌ Failed to save game state after rainbow placement');
+            }
+            
+            // Broadcast to ALL clients including the sender
+            io.emit('rainbow-placed', { id, x, y, z });
+            
+            console.log(`✅ Rainbow ${id} saved successfully. Total rainbows: ${gameState.rainbows.length}`);
+        } catch (error) {
+            console.error('❌ Error handling rainbow placement:', error);
+        }
+    });
+    
+    // Handle rainbow removal (undo)
+    socket.on('remove-rainbow', (data) => {
+        const { id } = data;
+        
+        // Remove the rainbow
+        const index = gameState.rainbows.findIndex(r => r.id === id);
+        if (index !== -1) {
+            gameState.rainbows.splice(index, 1);
+            
+            // Save to file
+            saveGameState();
+            
+            // Broadcast to ALL clients including the sender
+            io.emit('rainbow-removed', { id });
+        }
+    });
+    
+    // Handle background color change
+    socket.on('set-background-color', (data) => {
+        try {
+            const { color } = data;
+            
+            if (color === undefined || typeof color !== 'number') {
+                console.error('❌ Invalid background color data received:', data);
+                return;
+            }
+            
+            console.log(`🎨 Received background color change from ${socket.id}:`, { color: `#${color.toString(16)}` });
+            
+            // Store the background color
+            gameState.backgroundColor = color;
+            
+            // Save to file immediately
+            const saved = saveGameState();
+            if (!saved) {
+                console.error('❌ Failed to save game state after background color change');
+            }
+            
+            // Broadcast to ALL clients including the sender
+            io.emit('background-color-changed', { color });
+            
+            console.log(`✅ Background color saved successfully: #${color.toString(16)}`);
+        } catch (error) {
+            console.error('❌ Error handling background color change:', error);
+        }
     });
     
     // Handle disconnect

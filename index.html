@@ -12,10 +12,14 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: 'Times New Roman', Times, serif;
             background: #87CEEB;
             color: #333;
             overflow: hidden;
+        }
+        
+        * {
+            font-family: 'Times New Roman', Times, serif;
         }
 
         #canvas-container {
@@ -29,9 +33,9 @@
             top: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 1);
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 0;
             border: 2px solid rgba(0, 0, 0, 0.2);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
@@ -65,9 +69,9 @@
             z-index: 1000;
             font-size: 20px;
             color: #333;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 1);
             padding: 20px 40px;
-            border-radius: 10px;
+            border-radius: 0;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             text-align: center;
         }
@@ -87,7 +91,7 @@
             background: rgba(255, 0, 0, 0.9);
             color: white;
             padding: 10px 20px;
-            border-radius: 5px;
+            border-radius: 0;
             font-size: 14px;
             display: none;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -137,9 +141,9 @@
             top: 20px;
             right: 20px;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 1);
             padding: 15px 20px;
-            border-radius: 10px;
+            border-radius: 0;
             border: 2px solid rgba(0, 0, 0, 0.2);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             font-size: 14px;
@@ -168,6 +172,12 @@
             margin-bottom: 8px;
             color: #555;
         }
+        
+        #background-color-picker h3 {
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #555;
+        }
 
         .color-swatches {
             display: flex;
@@ -179,7 +189,7 @@
             width: 30px;
             height: 30px;
             border: 2px solid #333;
-            border-radius: 4px;
+            border-radius: 0;
             cursor: pointer;
             transition: transform 0.1s;
         }
@@ -198,9 +208,9 @@
             bottom: 20px;
             right: 20px;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 1);
             padding: 10px 15px;
-            border-radius: 10px;
+            border-radius: 0;
             border: 2px solid rgba(0, 0, 0, 0.2);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             font-size: 14px;
@@ -223,9 +233,9 @@
             bottom: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 1);
             padding: 15px 20px;
-            border-radius: 10px;
+            border-radius: 0;
             border: 2px solid rgba(0, 0, 0, 0.2);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             display: flex;
@@ -243,7 +253,7 @@
             cursor: pointer;
             transition: transform 0.2s;
             border: 2px solid transparent;
-            border-radius: 8px;
+            border-radius: 0;
             padding: 5px;
         }
 
@@ -297,6 +307,10 @@
             <h3>Block Color:</h3>
             <div class="color-swatches" id="color-swatches"></div>
         </div>
+        <div id="background-color-picker" style="margin-top: 15px;">
+            <h3>Background Color:</h3>
+            <div class="color-swatches" id="background-color-swatches"></div>
+        </div>
     </div>
 
     <div id="crosshair" style="display: none;"></div>
@@ -314,6 +328,9 @@
         <div class="cloud-item" id="sun-button" title="Click to add sun">
             <img src="sun.png" alt="Sun">
         </div>
+        <div class="cloud-item" id="rainbow-button" title="Click to add rainbow">
+            <img src="rainbow.png" alt="Rainbow">
+        </div>
     </div>
 
     <script>
@@ -327,8 +344,9 @@
 
             // Initialize Three.js scene
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB); // Sky blue
-            scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+            let selectedBackgroundColor = 0x87CEEB; // Default sky blue
+            scene.background = new THREE.Color(selectedBackgroundColor);
+            scene.fog = new THREE.Fog(selectedBackgroundColor, 10, 50);
 
             // Camera setup
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -361,6 +379,7 @@
             const terrainBlocks = new Map(); // Store 3D terrain blocks (for mounds)
             const clouds = []; // Store cloud objects in the scene
             const suns = []; // Store sun objects in the scene
+            const rainbows = []; // Store rainbow objects in the scene
             const raycaster = new THREE.Raycaster();
             
             // Socket.IO connection for multiplayer and persistence
@@ -369,8 +388,10 @@
             let isLoadingState = false; // Flag to prevent syncing actions while loading initial state
             let hasReceivedInitialState = false; // Flag to track if initial state has been received
             let pendingBlocks = []; // Queue of blocks to send once connected
+            let pendingTiles = []; // Queue of tiles to send once connected
             let pendingClouds = []; // Queue of clouds to send once connected
             let pendingSuns = []; // Queue of suns to send once connected
+            let pendingRainbows = []; // Queue of rainbows to send once connected
             
             // Initialize Socket.IO
             if (typeof io !== 'undefined') {
@@ -428,7 +449,7 @@
                 // Handle initial state from server
                 socket.on('initial-state', (data) => {
                     console.log('📥 Loading initial state from server...');
-                    console.log(`Received ${Object.keys(data.blocks || {}).length} blocks, ${(data.clouds || []).length} clouds, ${(data.suns || []).length} suns`);
+                    console.log(`Received ${Object.keys(data.blocks || {}).length} blocks, ${Object.keys(data.tiles || {}).length} tiles, ${(data.clouds || []).length} clouds, ${(data.suns || []).length} suns, ${(data.rainbows || []).length} rainbows`);
                     isLoadingState = true;
                     
                     const loadingStatus = document.getElementById('loading-status');
@@ -440,9 +461,9 @@
                         loadInitialState(data);
                         hasReceivedInitialState = true;
                         console.log('✅ Initial state loaded successfully');
-                        console.log(`✅ Scene now has ${terrainBlocks.size} blocks, ${clouds.length} clouds, ${suns.length} suns`);
+                        console.log(`✅ Scene now has ${terrainBlocks.size} blocks, ${clouds.length} clouds, ${suns.length} suns, ${rainbows.length} rainbows`);
                         
-                        // Send any pending blocks that were created before connection
+                        // Send any pending blocks and tiles that were created before connection
                         // (This shouldn't happen normally, but it's a safety measure)
                         if (pendingBlocks.length > 0) {
                             console.log(`⚠️ Sending ${pendingBlocks.length} pending blocks to server`);
@@ -454,6 +475,22 @@
                             pendingBlocks = [];
                         }
                         
+                        if (pendingTiles.length > 0) {
+                            console.log(`⚠️ Sending ${pendingTiles.length} pending tiles to server`);
+                            pendingTiles.forEach(tileData => {
+                                if (!terrainTiles.has(tileData.key)) {
+                                    socket.emit('place-tile', tileData);
+                                }
+                            });
+                            pendingTiles = [];
+                        }
+                        
+                        // Create initial tiles if no tiles were loaded (new game)
+                        if (terrainTiles.size === 0) {
+                            console.log('No tiles loaded, creating initial tiles');
+                            createInitialTiles();
+                        }
+                        
                         if (loadingStatus) {
                             loadingStatus.textContent = 'Ready!';
                         }
@@ -461,6 +498,8 @@
                     } catch (error) {
                         console.error('❌ Error loading initial state:', error);
                         hasReceivedInitialState = true; // Allow interactions even if loading failed
+                        // Create initial tiles as fallback
+                        createInitialTiles();
                         if (loadingStatus) {
                             loadingStatus.textContent = 'Error loading state';
                         }
@@ -550,9 +589,48 @@
                     }
                 });
                 
+                // Handle rainbow placement from other clients
+                socket.on('rainbow-placed', (data) => {
+                    if (!isLoadingState) {
+                        const { id, x, y, z } = data;
+                        // Check if rainbow with this ID already exists
+                        const existingRainbow = rainbows.find(r => r.userData && r.userData.id === id);
+                        if (!existingRainbow) {
+                            createRainbowFromServer(id, x, y, z); // Create rainbow without sending to server
+                        }
+                    }
+                });
+                
+                // Handle rainbow removal from other clients
+                socket.on('rainbow-removed', (data) => {
+                    if (!isLoadingState) {
+                        const { id } = data;
+                        removeRainbowById(id, false); // Don't send to server
+                    }
+                });
+                
                 // Handle user count updates
                 socket.on('user-count', (count) => {
                     updatePlayerCount(count);
+                });
+                
+                // Handle background color changes from other clients
+                socket.on('background-color-changed', (data) => {
+                    if (!isLoadingState) {
+                        const { color } = data;
+                        selectedBackgroundColor = color;
+                        scene.background = new THREE.Color(selectedBackgroundColor);
+                        scene.fog = new THREE.Fog(selectedBackgroundColor, 10, 50);
+                        
+                        // Update selected swatch in background color picker
+                        const backgroundColorSwatches = document.querySelectorAll('#background-color-swatches .color-swatch');
+                        backgroundColorSwatches.forEach((swatch, index) => {
+                            if (backgroundColors[index] && backgroundColors[index].color === color) {
+                                backgroundColorSwatches.forEach(s => s.classList.remove('selected'));
+                                swatch.classList.add('selected');
+                            }
+                        });
+                    }
                 });
             }
             
@@ -573,9 +651,35 @@
             
             // Load initial state from server
             function loadInitialState(data) {
-                const { blocks, clouds: serverClouds, suns: serverSuns } = data;
+                const { blocks, tiles: serverTiles, clouds: serverClouds, suns: serverSuns, rainbows: serverRainbows, backgroundColor: serverBackgroundColor } = data;
                 
-                console.log(`Loading state: ${Object.keys(blocks || {}).length} blocks, ${(serverClouds || []).length} clouds, ${(serverSuns || []).length} suns`);
+                console.log(`Loading state: ${Object.keys(blocks || {}).length} blocks, ${Object.keys(serverTiles || {}).length} tiles, ${(serverClouds || []).length} clouds, ${(serverSuns || []).length} suns, ${(serverRainbows || []).length} rainbows`);
+                
+                // Load background color
+                if (serverBackgroundColor !== undefined) {
+                    selectedBackgroundColor = serverBackgroundColor;
+                    scene.background = new THREE.Color(selectedBackgroundColor);
+                    scene.fog = new THREE.Fog(selectedBackgroundColor, 10, 50);
+                    
+                    // Update selected swatch in background color picker
+                    const backgroundColorSwatches = document.querySelectorAll('#background-color-swatches .color-swatch');
+                    backgroundColorSwatches.forEach((swatch, index) => {
+                        if (backgroundColors[index] && backgroundColors[index].color === selectedBackgroundColor) {
+                            backgroundColorSwatches.forEach(s => s.classList.remove('selected'));
+                            swatch.classList.add('selected');
+                        }
+                    });
+                }
+                
+                // Load tiles first (before blocks, so blocks can be placed on them)
+                if (serverTiles && typeof serverTiles === 'object') {
+                    Object.values(serverTiles).forEach(tileData => {
+                        if (tileData && tileData.x !== undefined && tileData.z !== undefined) {
+                            const { x, z } = tileData;
+                            createTerrainTile(x, z, false); // Don't send to server (already saved)
+                        }
+                    });
+                }
                 
                 // Load blocks
                 if (blocks && typeof blocks === 'object') {
@@ -607,7 +711,17 @@
                     });
                 }
                 
-                console.log(`State loaded: ${terrainBlocks.size} blocks, ${clouds.length} clouds, ${suns.length} suns in scene`);
+                // Load rainbows
+                if (serverRainbows && Array.isArray(serverRainbows)) {
+                    serverRainbows.forEach(rainbowData => {
+                        if (rainbowData && rainbowData.id && rainbowData.x !== undefined) {
+                            const { id, x, y, z } = rainbowData;
+                            createRainbowFromServer(id, x, y, z);
+                        }
+                    });
+                }
+                
+                console.log(`State loaded: ${terrainTiles.size} tiles, ${terrainBlocks.size} blocks, ${clouds.length} clouds, ${suns.length} suns, ${rainbows.length} rainbows in scene`);
             }
             
             // Action history for undo functionality
@@ -626,6 +740,7 @@
             const textureLoader = new THREE.TextureLoader();
             let cloudTexture = null;
             let sunTexture = null;
+            let rainbowTexture = null;
             
             // Load cloud texture
             textureLoader.load('cloud.png', (texture) => {
@@ -643,6 +758,14 @@
                 console.error('Error loading sun texture:', error);
             });
             
+            // Load rainbow texture
+            textureLoader.load('rainbow.png', (texture) => {
+                rainbowTexture = texture;
+                // Texture is loaded, will be used in createRainbow function
+            }, undefined, (error) => {
+                console.error('Error loading rainbow texture:', error);
+            });
+            
             // Build mode: 'expand' or 'build'
             let buildMode = 'expand'; // Default to expand mode
             
@@ -657,6 +780,14 @@
             ];
             
             let selectedColor = blockColors[0].color; // Default to brown
+            
+            // Available background colors
+            const backgroundColors = [
+                { name: 'Sky Blue', color: 0x87CEEB },
+                { name: 'Light Gray', color: 0xD3D3D3 },
+                { name: 'Pale Yellow', color: 0xFFFACD },
+                { name: 'Lavender', color: 0xE6E6FA }
+            ];
 
             // Create initial floor tile at origin
             function createTerrainTile(x, z, sendToServer = true) {
@@ -687,17 +818,23 @@
                 terrainTiles.set(key, tileData);
                 
                 // Send to server if connected (use socket.connected for immediate check)
-                if (sendToServer && socket && socket.connected && !isLoadingState) {
+                if (sendToServer) {
                     const tileDataToSend = {
                         key: key,
                         x: x,
                         z: z
                     };
-                    socket.emit('place-tile', tileDataToSend);
-                    console.log('✅ Sent tile to server:', tileDataToSend);
-                } else if (sendToServer && socket && !socket.connected) {
-                    // Queue tile to send once connected
-                    console.log('⚠️ Tile queued - socket not connected yet');
+                    
+                    if (socket && socket.connected && !isLoadingState) {
+                        socket.emit('place-tile', tileDataToSend);
+                        console.log('✅ Sent tile to server:', tileDataToSend);
+                    } else if (socket && !socket.connected) {
+                        // Queue tile to send once connected
+                        pendingTiles.push(tileDataToSend);
+                        console.log('⚠️ Tile queued - socket not connected yet:', tileDataToSend);
+                    } else if (!socket) {
+                        console.warn('⚠️ Tile not sent - no socket connection');
+                    }
                 }
                 
                 return tileData;
@@ -1025,6 +1162,105 @@
                 });
             }
             
+            // Create rainbow in the scene
+            function createRainbow(x, y, z, recordAction = true, sendToServer = true, rainbowId = null) {
+                // Generate ID if not provided
+                if (!rainbowId) {
+                    rainbowId = generateId();
+                }
+                
+                let rainbow;
+                if (!rainbowTexture) {
+                    // If texture isn't loaded yet, create a simple rainbow using geometry
+                    const rainbowGeometry = new THREE.PlaneGeometry(12, 12);
+                    const rainbowMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xFF69B4,
+                        transparent: true,
+                        opacity: 0.7,
+                        side: THREE.DoubleSide
+                    });
+                    rainbow = new THREE.Mesh(rainbowGeometry, rainbowMaterial);
+                    rainbow.position.set(x, y, z);
+                    rainbow.castShadow = false;
+                    rainbow.receiveShadow = false;
+                    rainbow.userData = { id: rainbowId };
+                    scene.add(rainbow);
+                    rainbows.push(rainbow);
+                } else {
+                    // Create rainbow using plane with texture (billboard) - bigger than clouds/suns
+                    const rainbowSize = 12; // Bigger than clouds (5) and suns (6)
+                    const rainbowGeometry = new THREE.PlaneGeometry(rainbowSize, rainbowSize);
+                    const rainbowMaterial = new THREE.MeshBasicMaterial({
+                        map: rainbowTexture,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        side: THREE.DoubleSide,
+                        depthWrite: false
+                    });
+                    rainbow = new THREE.Mesh(rainbowGeometry, rainbowMaterial);
+                    
+                    // Position rainbow
+                    rainbow.position.set(x, y, z);
+                    rainbow.userData = { id: rainbowId };
+                    rainbow.castShadow = false;
+                    rainbow.receiveShadow = false;
+                    scene.add(rainbow);
+                    rainbows.push(rainbow);
+                }
+                
+                // Send to server if connected (use socket.connected for immediate check)
+                if (sendToServer && socket && socket.connected && !isLoadingState && recordAction) {
+                    socket.emit('place-rainbow', {
+                        id: rainbowId,
+                        x: x,
+                        y: y,
+                        z: z
+                    });
+                }
+                
+                // Record action for undo
+                if (recordAction) {
+                    addActionToHistory({
+                        type: 'rainbow',
+                        object: rainbow,
+                        id: rainbowId,
+                        x: x,
+                        y: y,
+                        z: z
+                    });
+                }
+            }
+            
+            // Create rainbow from server (without sending to server)
+            function createRainbowFromServer(id, x, y, z) {
+                createRainbow(x, y, z, false, false, id);
+            }
+            
+            // Remove rainbow by ID
+            function removeRainbowById(id, sendToServer = true) {
+                const rainbowIndex = rainbows.findIndex(r => r.userData && r.userData.id === id);
+                if (rainbowIndex !== -1) {
+                    const rainbow = rainbows[rainbowIndex];
+                    scene.remove(rainbow);
+                    rainbow.geometry.dispose();
+                    rainbow.material.dispose();
+                    // Don't dispose texture as it's shared
+                    rainbows.splice(rainbowIndex, 1);
+                    
+                    // Send to server if connected (use socket.connected for immediate check)
+                    if (sendToServer && socket && socket.connected && !isLoadingState) {
+                        socket.emit('remove-rainbow', { id });
+                    }
+                }
+            }
+            
+            // Update rainbow rotations to face camera (billboard effect)
+            function updateRainbows() {
+                rainbows.forEach(rainbow => {
+                    rainbow.lookAt(camera.position);
+                });
+            }
+            
             // Action history management with batching
             // Actions are batched while mouse is down - all block actions during one mouse-down period
             // are grouped together and can be undone with a single Ctrl+Z
@@ -1056,7 +1292,7 @@
                         currentBatch = null;
                     }
                     
-                    // Add action directly (for clouds/suns or blocks when mouse is not down)
+                    // Add action directly (for clouds/suns/rainbows or blocks when mouse is not down)
                     actionHistory.push(action);
                     
                     // Limit history size
@@ -1107,6 +1343,13 @@
                     } else if (action.object && action.object.userData && action.object.userData.id) {
                         removeSunById(action.object.userData.id, true);
                     }
+                } else if (action.type === 'rainbow') {
+                    // Remove rainbow by ID (will sync with server)
+                    if (action.id) {
+                        removeRainbowById(action.id, true);
+                    } else if (action.object && action.object.userData && action.object.userData.id) {
+                        removeRainbowById(action.object.userData.id, true);
+                    }
                 }
             }
             
@@ -1126,8 +1369,9 @@
                     const blockKeys = [];
                     const cloudIds = [];
                     const sunIds = [];
+                    const rainbowIds = [];
                     
-                    // Separate block actions from cloud/sun actions
+                    // Separate block actions from cloud/sun/rainbow actions
                     action.actions.forEach(a => {
                         if (a.type === 'block') {
                             blockKeys.push(a.key);
@@ -1143,6 +1387,12 @@
                             } else if (a.object && a.object.userData && a.object.userData.id) {
                                 sunIds.push(a.object.userData.id);
                             }
+                        } else if (a.type === 'rainbow') {
+                            if (a.id) {
+                                rainbowIds.push(a.id);
+                            } else if (a.object && a.object.userData && a.object.userData.id) {
+                                rainbowIds.push(a.object.userData.id);
+                            }
                         }
                     });
                     
@@ -1156,7 +1406,7 @@
                         removeBlock(key, false);
                     });
                     
-                    // Remove clouds and suns individually (they don't have batch support)
+                    // Remove clouds, suns, and rainbows individually (they don't have batch support)
                     cloudIds.forEach(id => {
                         removeCloudById(id, true);
                     });
@@ -1164,18 +1414,33 @@
                     sunIds.forEach(id => {
                         removeSunById(id, true);
                     });
+                    
+                    rainbowIds.forEach(id => {
+                        removeRainbowById(id, true);
+                    });
                 } else {
                     // Undo single action
                     undoAction(action);
                 }
             }
 
-            // Create initial terrain tiles
-            createTerrainTile(0, 0);
-            createTerrainTile(-TERRAIN_TILE_SIZE, 0);
-            createTerrainTile(TERRAIN_TILE_SIZE, 0);
-            createTerrainTile(0, -TERRAIN_TILE_SIZE);
-            createTerrainTile(0, TERRAIN_TILE_SIZE);
+            // Create initial terrain tiles (only if not loading from server)
+            // These will be created only if server doesn't send any tiles (new game)
+            // If server sends tiles, they will be created in loadInitialState
+            // We'll create them after initial state is received, or after timeout if no state received
+            function createInitialTiles() {
+                // Only create if no tiles exist yet
+                if (terrainTiles.size === 0) {
+                    console.log('🟢 Creating initial tiles (new game)');
+                    // Only send to server if connected and state has been received
+                    const shouldSend = socket && socket.connected && hasReceivedInitialState;
+                    createTerrainTile(0, 0, shouldSend);
+                    createTerrainTile(-TERRAIN_TILE_SIZE, 0, shouldSend);
+                    createTerrainTile(TERRAIN_TILE_SIZE, 0, shouldSend);
+                    createTerrainTile(0, -TERRAIN_TILE_SIZE, shouldSend);
+                    createTerrainTile(0, TERRAIN_TILE_SIZE, shouldSend);
+                }
+            }
             
             // Create an invisible ground plane for raycasting (larger than terrain)
             const groundPlane = new THREE.Mesh(
@@ -1196,13 +1461,14 @@
             // Function to expand terrain at position (horizontal expansion)
             function expandTerrainAt(x, z) {
                 const snapped = snapToGrid(x, z);
-                createTerrainTile(snapped.x, snapped.z);
+                console.log('🟢 Expanding terrain at:', snapped);
                 
-                // Also create adjacent tiles for smoother expansion
-                createTerrainTile(snapped.x - TERRAIN_TILE_SIZE, snapped.z);
-                createTerrainTile(snapped.x + TERRAIN_TILE_SIZE, snapped.z);
-                createTerrainTile(snapped.x, snapped.z - TERRAIN_TILE_SIZE);
-                createTerrainTile(snapped.x, snapped.z + TERRAIN_TILE_SIZE);
+                // Create center tile and adjacent tiles
+                createTerrainTile(snapped.x, snapped.z, true); // Send to server
+                createTerrainTile(snapped.x - TERRAIN_TILE_SIZE, snapped.z, true);
+                createTerrainTile(snapped.x + TERRAIN_TILE_SIZE, snapped.z, true);
+                createTerrainTile(snapped.x, snapped.z - TERRAIN_TILE_SIZE, true);
+                createTerrainTile(snapped.x, snapped.z + TERRAIN_TILE_SIZE, true);
             }
 
             // Function to build mound at position (vertical building)
@@ -1282,26 +1548,56 @@
             
             // Initialize color picker UI
             function initializeColorPicker() {
+                // Initialize block color picker
                 const colorSwatches = document.getElementById('color-swatches');
-                if (!colorSwatches) return;
-                
-                blockColors.forEach((colorData, index) => {
-                    const swatch = document.createElement('div');
-                    swatch.className = 'color-swatch' + (index === 0 ? ' selected' : '');
-                    // Convert hex number to CSS color string
-                    const colorHex = '#' + colorData.color.toString(16).padStart(6, '0').toUpperCase();
-                    swatch.style.backgroundColor = colorHex;
-                    swatch.title = colorData.name;
-                    swatch.addEventListener('click', () => {
-                        // Remove selected class from all swatches
-                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-                        // Add selected class to clicked swatch
-                        swatch.classList.add('selected');
-                        // Update selected color
-                        selectedColor = colorData.color;
+                if (colorSwatches) {
+                    blockColors.forEach((colorData, index) => {
+                        const swatch = document.createElement('div');
+                        swatch.className = 'color-swatch' + (index === 0 ? ' selected' : '');
+                        // Convert hex number to CSS color string
+                        const colorHex = '#' + colorData.color.toString(16).padStart(6, '0').toUpperCase();
+                        swatch.style.backgroundColor = colorHex;
+                        swatch.title = colorData.name;
+                        swatch.addEventListener('click', () => {
+                            // Remove selected class from all block color swatches
+                            document.querySelectorAll('#color-swatches .color-swatch').forEach(s => s.classList.remove('selected'));
+                            // Add selected class to clicked swatch
+                            swatch.classList.add('selected');
+                            // Update selected color
+                            selectedColor = colorData.color;
+                        });
+                        colorSwatches.appendChild(swatch);
                     });
-                    colorSwatches.appendChild(swatch);
-                });
+                }
+                
+                // Initialize background color picker
+                const backgroundColorSwatches = document.getElementById('background-color-swatches');
+                if (backgroundColorSwatches) {
+                    backgroundColors.forEach((colorData, index) => {
+                        const swatch = document.createElement('div');
+                        swatch.className = 'color-swatch' + (index === 0 ? ' selected' : '');
+                        // Convert hex number to CSS color string
+                        const colorHex = '#' + colorData.color.toString(16).padStart(6, '0').toUpperCase();
+                        swatch.style.backgroundColor = colorHex;
+                        swatch.title = colorData.name;
+                        swatch.addEventListener('click', () => {
+                            // Remove selected class from all background color swatches
+                            document.querySelectorAll('#background-color-swatches .color-swatch').forEach(s => s.classList.remove('selected'));
+                            // Add selected class to clicked swatch
+                            swatch.classList.add('selected');
+                            // Update background color
+                            selectedBackgroundColor = colorData.color;
+                            scene.background = new THREE.Color(selectedBackgroundColor);
+                            scene.fog = new THREE.Fog(selectedBackgroundColor, 10, 50);
+                            
+                            // Send to server if connected
+                            if (socket && socket.connected && !isLoadingState) {
+                                socket.emit('set-background-color', { color: selectedBackgroundColor });
+                            }
+                        });
+                        backgroundColorSwatches.appendChild(swatch);
+                    });
+                }
             }
 
             // Mouse look controls
@@ -1529,6 +1825,34 @@
                 });
             }
             
+            // Place rainbow at camera position (in front of camera)
+            function placeRainbowAtCamera() {
+                // Calculate position in front of camera
+                const distance = 40; // Distance in front of camera (farther than sun)
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                
+                // Calculate position in front of camera
+                const rainbowPos = new THREE.Vector3();
+                rainbowPos.copy(camera.position);
+                rainbowPos.add(direction.multiplyScalar(distance));
+                
+                // Place rainbow at a fixed height in the sky (background level, higher than clouds/suns)
+                rainbowPos.y = 30 + Math.random() * 10; // Height between 30-40 units
+                
+                createRainbow(rainbowPos.x, rainbowPos.y, rainbowPos.z);
+            }
+            
+            // Handle rainbow menu button click
+            const rainbowButton = document.getElementById('rainbow-button');
+            if (rainbowButton) {
+                rainbowButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation(); // Prevent triggering canvas pointer lock
+                    placeRainbowAtCamera();
+                });
+            }
+            
             // Keyboard shortcut for undo (Ctrl+Z or Cmd+Z)
             document.addEventListener('keydown', (event) => {
                 if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.repeat) {
@@ -1597,6 +1921,10 @@
                         }
                         console.error('❌ Server not connected! Progress will not be saved.');
                     }
+                    // Create initial tiles if none exist
+                    if (terrainTiles.size === 0) {
+                        createInitialTiles();
+                    }
                     hasReceivedInitialState = true; // Allow interactions even without state
                     showUI();
                 }
@@ -1616,6 +1944,7 @@
                 updateTerrainExpansion();
                 updateClouds(); // Update cloud rotations to face camera
                 updateSuns(); // Update sun rotations to face camera
+                updateRainbows(); // Update rainbow rotations to face camera
                 renderer.render(scene, camera);
             }
             animate();
