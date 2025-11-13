@@ -1,0 +1,22 @@
+{
+  "name": "art-101-assignment3",
+  "version": "1.0.0",
+  "description": "Live server for Art 101 Assignment 3",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "server",
+    "express",
+    "web"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
+  }
+}
+

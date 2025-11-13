@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Art 101 Assignment 3 - 3D Space</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #87CEEB;
+            color: #333;
+            overflow: hidden;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        #instructions {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        #instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        #instructions li {
+            margin-bottom: 5px;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            font-size: 20px;
+            color: #333;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        #loading .status {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+        
+        #connection-warning {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        #connection-warning.show {
+            display: block;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            pointer-events: none;
+            width: 20px;
+            height: 20px;
+        }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+        }
+
+        #crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #crosshair::after {
+            width: 20px;
+            height: 2px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #mode-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        #mode-indicator .mode-text {
+            margin-bottom: 10px;
+        }
+
+        #mode-indicator .mode-value {
+            color: #4CAF50;
+            font-size: 16px;
+        }
+
+        #mode-indicator .mode-value.build-mode {
+            color: #FF9800;
+        }
+
+        #color-picker {
+            margin-top: 10px;
+        }
+
+        #color-picker h3 {
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        .color-swatches {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+
+        .color-swatch.selected {
+            border: 3px solid #000;
+            box-shadow: 0 0 0 2px #fff;
+        }
+
+        #player-count {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        #player-count .count-label {
+            color: #555;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        #player-count .count-value {
+            color: #4CAF50;
+            font-size: 18px;
+        }
+
+        #cloud-menu {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #cloud-menu h3 {
+            font-size: 14px;
+            color: #333;
+            margin: 0;
+        }
+
+        #cloud-menu .cloud-item {
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        #cloud-menu .cloud-item:hover {
+            transform: scale(1.1);
+            border-color: rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        #cloud-menu .cloud-item img {
+            width: 60px;
+            height: 60px;
+            display: block;
+            object-fit: contain;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="loading">
+        Loading 3D world...
+        <div class="status" id="loading-status">Connecting to server...</div>
+    </div>
+    
+    <div id="connection-warning">
+        ⚠️ Not connected to server! Progress will not be saved. Make sure the server is running on port 3001.
+    </div>
+    
+    <div id="ui" style="display: none;">
+        <div id="instructions">
+            <ul>
+                <li><strong>W</strong> - Move Forward</li>
+                <li><strong>S</strong> - Move Backward</li>
+                <li><strong>A</strong> - Move Left</li>
+                <li><strong>D</strong> - Move Right</li>
+                <li><strong>Space</strong> - Move Up</li>
+                <li><strong>Shift</strong> - Move Down</li>
+                <li><strong>Esc</strong> - Lock Mouse</li>
+                <li><strong>T</strong> - Toggle Mode (Expand/Build)</li>
+                <li><strong>Hold Click</strong> - Build/Expand</li>
+                <li><strong>Ctrl+Z</strong> - Undo</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="mode-indicator" style="display: none;">
+        <div class="mode-text">Mode: <span class="mode-value" id="mode-value">EXPAND</span></div>
+        <div id="color-picker">
+            <h3>Block Color:</h3>
+            <div class="color-swatches" id="color-swatches"></div>
+        </div>
+    </div>
+
+    <div id="crosshair" style="display: none;"></div>
+
+    <div id="player-count" style="display: none;">
+        <div class="count-label">Players Online</div>
+        <div class="count-value" id="player-count-value">1</div>
+    </div>
+
+    <div id="cloud-menu" style="display: none;">
+        <h3>Background:</h3>
+        <div class="cloud-item" id="cloud-button" title="Click to add cloud">
+            <img src="cloud.png" alt="Cloud">
+        </div>
+        <div class="cloud-item" id="sun-button" title="Click to add sun">
+            <img src="sun.png" alt="Sun">
+        </div>
+    </div>
+
+    <script>
+        // Wait for Three.js to load
+        window.addEventListener('load', function() {
+            if (typeof THREE === 'undefined') {
+                document.getElementById('loading').innerHTML = 'Error: Three.js failed to load. Please refresh.';
+                console.error('Three.js library not loaded');
+                return;
+            }
+
+            // Initialize Three.js scene
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue
+            scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+
+            // Camera setup
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const MIN_CAMERA_HEIGHT = 1; // Minimum height above floor
+            camera.position.set(0, 5, 10);
+            camera.rotation.order = 'YXZ'; // Set rotation order once to prevent gimbal lock
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            // Sandbox terrain system
+            const TERRAIN_TILE_SIZE = 10; // Size of each terrain tile
+            const BLOCK_SIZE = 0.5; // Size of each terrain block for mounds (smaller for more detail)
+            const terrainTiles = new Map(); // Store existing floor tiles
+            const terrainBlocks = new Map(); // Store 3D terrain blocks (for mounds)
+            const clouds = []; // Store cloud objects in the scene
+            const suns = []; // Store sun objects in the scene
+            const raycaster = new THREE.Raycaster();
+            
+            // Socket.IO connection for multiplayer and persistence
+            let socket = null;
+            let isConnected = false;
+            let isLoadingState = false; // Flag to prevent syncing actions while loading initial state
+            let hasReceivedInitialState = false; // Flag to track if initial state has been received
+            let pendingBlocks = []; // Queue of blocks to send once connected
+            let pendingClouds = []; // Queue of clouds to send once connected
+            let pendingSuns = []; // Queue of suns to send once connected
+            
+            // Initialize Socket.IO
+            if (typeof io !== 'undefined') {
+                socket = io({
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5
+                });
+                
+                // Handle connection
+                socket.on('connect', () => {
+                    console.log('✅ Connected to server');
+                    isConnected = true;
+                    // Hide connection warning
+                    const warning = document.getElementById('connection-warning');
+                    if (warning) {
+                        warning.classList.remove('show');
+                    }
+                    const loadingStatus = document.getElementById('loading-status');
+                    if (loadingStatus) {
+                        loadingStatus.textContent = 'Loading saved progress...';
+                    }
+                    console.log('Waiting for initial state...');
+                });
+                
+                // Handle connection error
+                socket.on('connect_error', (error) => {
+                    console.error('❌ Connection error:', error);
+                    isConnected = false;
+                    // Show warning if can't connect after 3 seconds
+                    setTimeout(() => {
+                        if (!socket.connected) {
+                            const warning = document.getElementById('connection-warning');
+                            if (warning) {
+                                warning.classList.add('show');
+                            }
+                        }
+                    }, 3000);
+                });
+                
+                // Handle disconnection
+                socket.on('disconnect', (reason) => {
+                    console.log('⚠️ Disconnected from server:', reason);
+                    isConnected = false;
+                    hasReceivedInitialState = false;
+                });
+                
+                // Handle reconnection
+                socket.on('reconnect', (attemptNumber) => {
+                    console.log('✅ Reconnected to server after', attemptNumber, 'attempts');
+                    isConnected = true;
+                    hasReceivedInitialState = false; // Need to receive state again
+                });
+                
+                // Handle initial state from server
+                socket.on('initial-state', (data) => {
+                    console.log('📥 Loading initial state from server...');
+                    console.log(`Received ${Object.keys(data.blocks || {}).length} blocks, ${(data.clouds || []).length} clouds, ${(data.suns || []).length} suns`);
+                    isLoadingState = true;
+                    
+                    const loadingStatus = document.getElementById('loading-status');
+                    if (loadingStatus) {
+                        loadingStatus.textContent = `Loading ${Object.keys(data.blocks || {}).length} blocks...`;
+                    }
+                    
+                    try {
+                        loadInitialState(data);
+                        hasReceivedInitialState = true;
+                        console.log('✅ Initial state loaded successfully');
+                        console.log(`✅ Scene now has ${terrainBlocks.size} blocks, ${clouds.length} clouds, ${suns.length} suns`);
+                        
+                        // Send any pending blocks that were created before connection
+                        // (This shouldn't happen normally, but it's a safety measure)
+                        if (pendingBlocks.length > 0) {
+                            console.log(`⚠️ Sending ${pendingBlocks.length} pending blocks to server`);
+                            pendingBlocks.forEach(blockData => {
+                                if (!terrainBlocks.has(blockData.key)) {
+                                    socket.emit('place-block', blockData);
+                                }
+                            });
+                            pendingBlocks = [];
+                        }
+                        
+                        if (loadingStatus) {
+                            loadingStatus.textContent = 'Ready!';
+                        }
+                        showUI(); // Show UI after state is loaded
+                    } catch (error) {
+                        console.error('❌ Error loading initial state:', error);
+                        hasReceivedInitialState = true; // Allow interactions even if loading failed
+                        if (loadingStatus) {
+                            loadingStatus.textContent = 'Error loading state';
+                        }
+                        showUI(); // Show UI even if loading failed
+                    } finally {
+                        isLoadingState = false;
+                    }
+                });
+                
+                // Handle block placement from other clients
+                socket.on('block-placed', (data) => {
+                    if (!isLoadingState) {
+                        const { key, x, y, z, color } = data;
+                        // Only create block if it doesn't already exist
+                        if (!terrainBlocks.has(key)) {
+                            createTerrainBlock(x, y, z, color, false, false); // Don't record action or send to server
+                        }
+                    }
+                });
+                
+                // Handle block removal from other clients
+                socket.on('block-removed', (data) => {
+                    if (!isLoadingState) {
+                        const { key } = data;
+                        removeBlock(key, false); // Don't send to server
+                    }
+                });
+                
+                // Handle batch block removal from other clients
+                socket.on('blocks-removed-batch', (data) => {
+                    if (!isLoadingState) {
+                        const { keys } = data;
+                        keys.forEach(key => {
+                            removeBlock(key, false); // Don't send to server
+                        });
+                    }
+                });
+                
+                // Handle tile placement from other clients
+                socket.on('tile-placed', (data) => {
+                    if (!isLoadingState) {
+                        const { key, x, z } = data;
+                        // Only create tile if it doesn't already exist
+                        if (!terrainTiles.has(key)) {
+                            createTerrainTile(x, z, false); // Don't send to server
+                        }
+                    }
+                });
+                
+                // Handle cloud placement from other clients
+                socket.on('cloud-placed', (data) => {
+                    if (!isLoadingState) {
+                        const { id, x, y, z } = data;
+                        // Check if cloud with this ID already exists
+                        const existingCloud = clouds.find(c => c.userData && c.userData.id === id);
+                        if (!existingCloud) {
+                            createCloudFromServer(id, x, y, z); // Create cloud without sending to server
+                        }
+                    }
+                });
+                
+                // Handle cloud removal from other clients
+                socket.on('cloud-removed', (data) => {
+                    if (!isLoadingState) {
+                        const { id } = data;
+                        removeCloudById(id, false); // Don't send to server
+                    }
+                });
+                
+                // Handle sun placement from other clients
+                socket.on('sun-placed', (data) => {
+                    if (!isLoadingState) {
+                        const { id, x, y, z } = data;
+                        // Check if sun with this ID already exists
+                        const existingSun = suns.find(s => s.userData && s.userData.id === id);
+                        if (!existingSun) {
+                            createSunFromServer(id, x, y, z); // Create sun without sending to server
+                        }
+                    }
+                });
+                
+                // Handle sun removal from other clients
+                socket.on('sun-removed', (data) => {
+                    if (!isLoadingState) {
+                        const { id } = data;
+                        removeSunById(id, false); // Don't send to server
+                    }
+                });
+                
+                // Handle user count updates
+                socket.on('user-count', (count) => {
+                    updatePlayerCount(count);
+                });
+            }
+            
+            // Function to show UI after initial state is received
+            function showUI() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('ui').style.display = 'block';
+                document.getElementById('mode-indicator').style.display = 'block';
+                document.getElementById('crosshair').style.display = 'block';
+                document.getElementById('player-count').style.display = 'block';
+                document.getElementById('cloud-menu').style.display = 'flex';
+                
+                // Initialize color picker and mode indicator
+                initializeColorPicker();
+                updateModeIndicator();
+                updatePlayerCount();
+            }
+            
+            // Load initial state from server
+            function loadInitialState(data) {
+                const { blocks, clouds: serverClouds, suns: serverSuns } = data;
+                
+                console.log(`Loading state: ${Object.keys(blocks || {}).length} blocks, ${(serverClouds || []).length} clouds, ${(serverSuns || []).length} suns`);
+                
+                // Load blocks
+                if (blocks && typeof blocks === 'object') {
+                    Object.values(blocks).forEach(blockData => {
+                        if (blockData && blockData.x !== undefined && blockData.y !== undefined && blockData.z !== undefined) {
+                            const { x, y, z, color } = blockData;
+                            createTerrainBlock(x, y, z, color, false, false); // Don't record action or send to server
+                        }
+                    });
+                }
+                
+                // Load clouds
+                if (serverClouds && Array.isArray(serverClouds)) {
+                    serverClouds.forEach(cloudData => {
+                        if (cloudData && cloudData.id && cloudData.x !== undefined) {
+                            const { id, x, y, z } = cloudData;
+                            createCloudFromServer(id, x, y, z);
+                        }
+                    });
+                }
+                
+                // Load suns
+                if (serverSuns && Array.isArray(serverSuns)) {
+                    serverSuns.forEach(sunData => {
+                        if (sunData && sunData.id && sunData.x !== undefined) {
+                            const { id, x, y, z } = sunData;
+                            createSunFromServer(id, x, y, z);
+                        }
+                    });
+                }
+                
+                console.log(`State loaded: ${terrainBlocks.size} blocks, ${clouds.length} clouds, ${suns.length} suns in scene`);
+            }
+            
+            // Action history for undo functionality
+            const actionHistory = []; // Stack of actions to undo
+            const MAX_HISTORY = 100; // Maximum number of actions to keep in history
+            let currentBatch = null; // Current batch of actions being grouped (batches actions while mouse is down)
+            const mouse = new THREE.Vector2();
+            let isMouseDown = false;
+            let mouseDownTime = 0;
+            let lastExpandTime = 0;
+            const EXPAND_DELAY = 200; // Milliseconds before terrain starts expanding
+            const EXPAND_INTERVAL = 150; // Milliseconds between expansions
+            const MOUND_BUILD_INTERVAL = 100; // Milliseconds between adding blocks to mound
+            
+            // Texture loader
+            const textureLoader = new THREE.TextureLoader();
+            let cloudTexture = null;
+            let sunTexture = null;
+            
+            // Load cloud texture
+            textureLoader.load('cloud.png', (texture) => {
+                cloudTexture = texture;
+                // Texture is loaded, will be used in createCloud function
+            }, undefined, (error) => {
+                console.error('Error loading cloud texture:', error);
+            });
+            
+            // Load sun texture
+            textureLoader.load('sun.png', (texture) => {
+                sunTexture = texture;
+                // Texture is loaded, will be used in createSun function
+            }, undefined, (error) => {
+                console.error('Error loading sun texture:', error);
+            });
+            
+            // Build mode: 'expand' or 'build'
+            let buildMode = 'expand'; // Default to expand mode
+            
+            // Available colors for terrain blocks (muted, desaturated colors)
+            const blockColors = [
+                { name: 'Muted Brown', color: 0x9E8B7A },
+                { name: 'Dusty Blue', color: 0x6B8A9E },
+                { name: 'Sage Green', color: 0x8FA68A },
+                { name: 'Warm Gray', color: 0x8B8B8B },
+                { name: 'Dusty Rose', color: 0xB89085 },
+                { name: 'Muted Lavender', color: 0x9B8FA8 }
+            ];
+            
+            let selectedColor = blockColors[0].color; // Default to brown
+
+            // Create initial floor tile at origin
+            function createTerrainTile(x, z, sendToServer = true) {
+                const key = `${x},${z}`;
+                if (terrainTiles.has(key)) {
+                    return terrainTiles.get(key); // Return existing tile
+                }
+
+                // Create floor tile
+                const floorGeometry = new THREE.PlaneGeometry(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+                const floorMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x90EE90,
+                    roughness: 0.9,
+                    metalness: 0.0
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.set(x, 0, z);
+                floor.receiveShadow = true;
+                scene.add(floor);
+
+                // Create grid helper for this tile
+                const gridHelper = new THREE.GridHelper(TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE, 0x888888, 0xcccccc);
+                gridHelper.position.set(x, 0.01, z);
+                scene.add(gridHelper);
+
+                const tileData = { floor, grid: gridHelper, x, z };
+                terrainTiles.set(key, tileData);
+                
+                // Send to server if connected (use socket.connected for immediate check)
+                if (sendToServer && socket && socket.connected && !isLoadingState) {
+                    const tileDataToSend = {
+                        key: key,
+                        x: x,
+                        z: z
+                    };
+                    socket.emit('place-tile', tileDataToSend);
+                    console.log('✅ Sent tile to server:', tileDataToSend);
+                } else if (sendToServer && socket && !socket.connected) {
+                    // Queue tile to send once connected
+                    console.log('⚠️ Tile queued - socket not connected yet');
+                }
+                
+                return tileData;
+            }
+
+            // Create terrain block (for building mounds)
+            function createTerrainBlock(x, y, z, color = selectedColor, recordAction = true, sendToServer = true) {
+                // Snap to grid
+                const snapX = Math.round(x / BLOCK_SIZE) * BLOCK_SIZE;
+                const snapY = Math.max(0, Math.round(y / BLOCK_SIZE) * BLOCK_SIZE); // Ensure y >= 0
+                const snapZ = Math.round(z / BLOCK_SIZE) * BLOCK_SIZE;
+                
+                const key = `${snapX},${snapY},${snapZ}`;
+                if (terrainBlocks.has(key)) {
+                    return; // Block already exists
+                }
+
+                // Create block geometry
+                const blockGeometry = new THREE.BoxGeometry(BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                const blockMaterial = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    roughness: 0.9,
+                    metalness: 0.0
+                });
+                const block = new THREE.Mesh(blockGeometry, blockMaterial);
+                
+                // Position block so its bottom is at snapY
+                block.position.set(snapX, snapY + BLOCK_SIZE / 2, snapZ);
+                block.castShadow = true;
+                block.receiveShadow = true;
+                scene.add(block);
+
+                terrainBlocks.set(key, { block, x: snapX, y: snapY, z: snapZ });
+                
+                // Send to server if connected (use socket.connected for immediate check)
+                // Only skip if we're currently loading state to avoid sending during initial load
+                if (sendToServer && recordAction) {
+                    const blockData = {
+                        key: key,
+                        x: snapX,
+                        y: snapY,
+                        z: snapZ,
+                        color: color
+                    };
+                    
+                    if (socket && socket.connected && !isLoadingState) {
+                        socket.emit('place-block', blockData);
+                        console.log('✅ Sent block to server:', blockData);
+                    } else if (socket && !socket.connected) {
+                        // Queue block to send once connected
+                        pendingBlocks.push(blockData);
+                        console.log('⚠️ Block queued - socket not connected yet');
+                    } else if (!socket) {
+                        console.warn('⚠️ Block not sent - no socket connection');
+                    }
+                }
+                
+                // Record action for undo
+                if (recordAction) {
+                    addActionToHistory({
+                        type: 'block',
+                        key: key,
+                        x: snapX,
+                        y: snapY,
+                        z: snapZ,
+                        color: color
+                    });
+                }
+            }
+            
+            // Remove block
+            function removeBlock(key, sendToServer = true) {
+                const blockData = terrainBlocks.get(key);
+                if (blockData) {
+                    scene.remove(blockData.block);
+                    blockData.block.geometry.dispose();
+                    blockData.block.material.dispose();
+                    terrainBlocks.delete(key);
+                    
+                    // Send to server if connected (use socket.connected for immediate check)
+                    if (sendToServer && socket && socket.connected && !isLoadingState) {
+                        socket.emit('remove-block', { key });
+                    }
+                }
+            }
+
+            // Get the highest block at a position (returns -1 if no blocks, meaning ground level)
+            function getHighestBlockAt(x, z) {
+                const snapX = Math.round(x / BLOCK_SIZE) * BLOCK_SIZE;
+                const snapZ = Math.round(z / BLOCK_SIZE) * BLOCK_SIZE;
+                
+                let highestY = -1; // -1 means no blocks, use ground level (0)
+                terrainBlocks.forEach((blockData) => {
+                    if (blockData.x === snapX && blockData.z === snapZ) {
+                        // Block's bottom is at blockData.y, top is at blockData.y + BLOCK_SIZE
+                        highestY = Math.max(highestY, blockData.y + BLOCK_SIZE);
+                    }
+                });
+                
+                return highestY;
+            }
+            
+            // Generate unique ID for clouds/suns
+            function generateId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            }
+            
+            // Create cloud in the scene
+            function createCloud(x, y, z, recordAction = true, sendToServer = true, cloudId = null) {
+                // Generate ID if not provided
+                if (!cloudId) {
+                    cloudId = generateId();
+                }
+                
+                let cloud;
+                if (!cloudTexture) {
+                    // If texture isn't loaded yet, create a simple cloud using geometry
+                    const cloudGeometry = new THREE.SphereGeometry(2, 8, 8);
+                    const cloudMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xFFFFFF,
+                        transparent: true,
+                        opacity: 0.8,
+                        roughness: 0.9,
+                        metalness: 0.0
+                    });
+                    cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                    cloud.position.set(x, y, z);
+                    cloud.castShadow = false;
+                    cloud.receiveShadow = false;
+                    cloud.userData = { id: cloudId };
+                    scene.add(cloud);
+                    clouds.push(cloud);
+                } else {
+                    // Create cloud using plane with texture (billboard)
+                    const cloudSize = 5;
+                    const cloudGeometry = new THREE.PlaneGeometry(cloudSize, cloudSize);
+                    const cloudMaterial = new THREE.MeshBasicMaterial({
+                        map: cloudTexture,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        side: THREE.DoubleSide,
+                        depthWrite: false
+                    });
+                    cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                    
+                    // Position cloud
+                    cloud.position.set(x, y, z);
+                    cloud.userData = { id: cloudId };
+                    
+                    // Make cloud always face camera (billboard effect)
+                    cloud.lookAt(camera.position);
+                    
+                    // Random rotation for variety
+                    cloud.rotation.z = Math.random() * Math.PI * 2;
+                    
+                    // Random scale for variety
+                    const scale = 0.8 + Math.random() * 0.4;
+                    cloud.scale.set(scale, scale, scale);
+                    
+                    cloud.castShadow = false;
+                    cloud.receiveShadow = false;
+                    scene.add(cloud);
+                    clouds.push(cloud);
+                }
+                
+                // Send to server if connected (use socket.connected for immediate check)
+                if (sendToServer && socket && socket.connected && !isLoadingState && recordAction) {
+                    socket.emit('place-cloud', {
+                        id: cloudId,
+                        x: x,
+                        y: y,
+                        z: z
+                    });
+                }
+                
+                // Record action for undo
+                if (recordAction) {
+                    addActionToHistory({
+                        type: 'cloud',
+                        object: cloud,
+                        id: cloudId,
+                        x: x,
+                        y: y,
+                        z: z
+                    });
+                }
+            }
+            
+            // Create cloud from server (without sending to server)
+            function createCloudFromServer(id, x, y, z) {
+                createCloud(x, y, z, false, false, id);
+            }
+            
+            // Remove cloud by ID
+            function removeCloudById(id, sendToServer = true) {
+                const cloudIndex = clouds.findIndex(c => c.userData && c.userData.id === id);
+                if (cloudIndex !== -1) {
+                    const cloud = clouds[cloudIndex];
+                    scene.remove(cloud);
+                    cloud.geometry.dispose();
+                    cloud.material.dispose();
+                    clouds.splice(cloudIndex, 1);
+                    
+                    // Send to server if connected (use socket.connected for immediate check)
+                    if (sendToServer && socket && socket.connected && !isLoadingState) {
+                        socket.emit('remove-cloud', { id });
+                    }
+                }
+            }
+            
+            // Update cloud rotations to face camera (billboard effect)
+            function updateClouds() {
+                clouds.forEach(cloud => {
+                    cloud.lookAt(camera.position);
+                });
+            }
+            
+            // Create sun in the scene
+            function createSun(x, y, z, recordAction = true, sendToServer = true, sunId = null) {
+                // Generate ID if not provided
+                if (!sunId) {
+                    sunId = generateId();
+                }
+                
+                let sun;
+                if (!sunTexture) {
+                    // If texture isn't loaded yet, create a simple sun using geometry
+                    const sunGeometry = new THREE.SphereGeometry(3, 16, 16);
+                    const sunMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xFFD700,
+                        emissive: 0xFFD700,
+                        emissiveIntensity: 0.8,
+                        roughness: 0.9,
+                        metalness: 0.0
+                    });
+                    sun = new THREE.Mesh(sunGeometry, sunMaterial);
+                    sun.position.set(x, y, z);
+                    sun.castShadow = false;
+                    sun.receiveShadow = false;
+                    sun.userData = { id: sunId };
+                    scene.add(sun);
+                    suns.push(sun);
+                } else {
+                    // Create sun using plane with texture (billboard)
+                    const sunSize = 6;
+                    const sunGeometry = new THREE.PlaneGeometry(sunSize, sunSize);
+                    const sunMaterial = new THREE.MeshBasicMaterial({
+                        map: sunTexture,
+                        transparent: true,
+                        alphaTest: 0.1,
+                        side: THREE.DoubleSide,
+                        depthWrite: false
+                    });
+                    sun = new THREE.Mesh(sunGeometry, sunMaterial);
+                    
+                    // Position sun
+                    sun.position.set(x, y, z);
+                    sun.userData = { id: sunId };
+                    
+                    // Make sun always face camera (billboard effect)
+                    sun.lookAt(camera.position);
+                    
+                    // Random rotation for variety
+                    sun.rotation.z = Math.random() * Math.PI * 2;
+                    
+                    // Random scale for variety
+                    const scale = 0.9 + Math.random() * 0.2;
+                    sun.scale.set(scale, scale, scale);
+                    
+                    sun.castShadow = false;
+                    sun.receiveShadow = false;
+                    scene.add(sun);
+                    suns.push(sun);
+                }
+                
+                // Send to server if connected (use socket.connected for immediate check)
+                if (sendToServer && socket && socket.connected && !isLoadingState && recordAction) {
+                    socket.emit('place-sun', {
+                        id: sunId,
+                        x: x,
+                        y: y,
+                        z: z
+                    });
+                }
+                
+                // Record action for undo
+                if (recordAction) {
+                    addActionToHistory({
+                        type: 'sun',
+                        object: sun,
+                        id: sunId,
+                        x: x,
+                        y: y,
+                        z: z
+                    });
+                }
+            }
+            
+            // Create sun from server (without sending to server)
+            function createSunFromServer(id, x, y, z) {
+                createSun(x, y, z, false, false, id);
+            }
+            
+            // Remove sun by ID
+            function removeSunById(id, sendToServer = true) {
+                const sunIndex = suns.findIndex(s => s.userData && s.userData.id === id);
+                if (sunIndex !== -1) {
+                    const sun = suns[sunIndex];
+                    scene.remove(sun);
+                    sun.geometry.dispose();
+                    sun.material.dispose();
+                    suns.splice(sunIndex, 1);
+                    
+                    // Send to server if connected (use socket.connected for immediate check)
+                    if (sendToServer && socket && socket.connected && !isLoadingState) {
+                        socket.emit('remove-sun', { id });
+                    }
+                }
+            }
+            
+            // Update sun rotations to face camera (billboard effect)
+            function updateSuns() {
+                suns.forEach(sun => {
+                    sun.lookAt(camera.position);
+                });
+            }
+            
+            // Action history management with batching
+            // Actions are batched while mouse is down - all block actions during one mouse-down period
+            // are grouped together and can be undone with a single Ctrl+Z
+            function addActionToHistory(action) {
+                // If this is a block action and mouse is down, add to current batch
+                if (action.type === 'block' && isMouseDown) {
+                    // Start a new batch if one doesn't exist
+                    if (!currentBatch) {
+                        currentBatch = {
+                            type: 'block',
+                            actions: []
+                        };
+                    }
+                    // Add block to current batch
+                    currentBatch.actions.push(action);
+                } else {
+                    // Finalize previous batch if it exists
+                    if (currentBatch) {
+                        if (currentBatch.actions.length === 1) {
+                            // Single action, add directly
+                            actionHistory.push(currentBatch.actions[0]);
+                        } else {
+                            // Multiple actions, add as batch
+                            actionHistory.push({
+                                type: 'batch',
+                                actions: currentBatch.actions
+                            });
+                        }
+                        currentBatch = null;
+                    }
+                    
+                    // Add action directly (for clouds/suns or blocks when mouse is not down)
+                    actionHistory.push(action);
+                    
+                    // Limit history size
+                    if (actionHistory.length > MAX_HISTORY) {
+                        actionHistory.shift(); // Remove oldest action
+                    }
+                }
+            }
+            
+            // Finalize current batch (call this when user releases mouse)
+            function finalizeCurrentBatch() {
+                if (currentBatch) {
+                    if (currentBatch.actions.length === 1) {
+                        // Single action, add directly
+                        actionHistory.push(currentBatch.actions[0]);
+                    } else {
+                        // Multiple actions, add as batch
+                        actionHistory.push({
+                            type: 'batch',
+                            actions: currentBatch.actions
+                        });
+                    }
+                    currentBatch = null;
+                    
+                    // Limit history size
+                    if (actionHistory.length > MAX_HISTORY) {
+                        actionHistory.shift(); // Remove oldest action
+                    }
+                }
+            }
+            
+            // Undo a single action
+            function undoAction(action) {
+                if (action.type === 'block') {
+                    // Remove block (will sync with server)
+                    removeBlock(action.key, true);
+                } else if (action.type === 'cloud') {
+                    // Remove cloud by ID (will sync with server)
+                    if (action.id) {
+                        removeCloudById(action.id, true);
+                    } else if (action.object && action.object.userData && action.object.userData.id) {
+                        removeCloudById(action.object.userData.id, true);
+                    }
+                } else if (action.type === 'sun') {
+                    // Remove sun by ID (will sync with server)
+                    if (action.id) {
+                        removeSunById(action.id, true);
+                    } else if (action.object && action.object.userData && action.object.userData.id) {
+                        removeSunById(action.object.userData.id, true);
+                    }
+                }
+            }
+            
+            // Undo last action (or batch of actions)
+            function undoLastAction() {
+                // Finalize current batch first
+                finalizeCurrentBatch();
+                
+                if (actionHistory.length === 0) {
+                    return; // Nothing to undo
+                }
+                
+                const action = actionHistory.pop();
+                
+                if (action.type === 'batch') {
+                    // Collect all block keys for batch removal
+                    const blockKeys = [];
+                    const cloudIds = [];
+                    const sunIds = [];
+                    
+                    // Separate block actions from cloud/sun actions
+                    action.actions.forEach(a => {
+                        if (a.type === 'block') {
+                            blockKeys.push(a.key);
+                        } else if (a.type === 'cloud') {
+                            if (a.id) {
+                                cloudIds.push(a.id);
+                            } else if (a.object && a.object.userData && a.object.userData.id) {
+                                cloudIds.push(a.object.userData.id);
+                            }
+                        } else if (a.type === 'sun') {
+                            if (a.id) {
+                                sunIds.push(a.id);
+                            } else if (a.object && a.object.userData && a.object.userData.id) {
+                                sunIds.push(a.object.userData.id);
+                            }
+                        }
+                    });
+                    
+                    // Batch remove blocks if connected (use socket.connected for immediate check)
+                    if (blockKeys.length > 0 && socket && socket.connected && !isLoadingState) {
+                        socket.emit('remove-blocks-batch', { keys: blockKeys });
+                    }
+                    
+                    // Remove blocks locally (without sending to server)
+                    blockKeys.forEach(key => {
+                        removeBlock(key, false);
+                    });
+                    
+                    // Remove clouds and suns individually (they don't have batch support)
+                    cloudIds.forEach(id => {
+                        removeCloudById(id, true);
+                    });
+                    
+                    sunIds.forEach(id => {
+                        removeSunById(id, true);
+                    });
+                } else {
+                    // Undo single action
+                    undoAction(action);
+                }
+            }
+
+            // Create initial terrain tiles
+            createTerrainTile(0, 0);
+            createTerrainTile(-TERRAIN_TILE_SIZE, 0);
+            createTerrainTile(TERRAIN_TILE_SIZE, 0);
+            createTerrainTile(0, -TERRAIN_TILE_SIZE);
+            createTerrainTile(0, TERRAIN_TILE_SIZE);
+            
+            // Create an invisible ground plane for raycasting (larger than terrain)
+            const groundPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(1000, 1000),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            groundPlane.rotation.x = -Math.PI / 2;
+            groundPlane.position.y = 0;
+            scene.add(groundPlane);
+
+            // Function to snap position to grid
+            function snapToGrid(x, z) {
+                const gridX = Math.floor(x / TERRAIN_TILE_SIZE) * TERRAIN_TILE_SIZE;
+                const gridZ = Math.floor(z / TERRAIN_TILE_SIZE) * TERRAIN_TILE_SIZE;
+                return { x: gridX, z: gridZ };
+            }
+
+            // Function to expand terrain at position (horizontal expansion)
+            function expandTerrainAt(x, z) {
+                const snapped = snapToGrid(x, z);
+                createTerrainTile(snapped.x, snapped.z);
+                
+                // Also create adjacent tiles for smoother expansion
+                createTerrainTile(snapped.x - TERRAIN_TILE_SIZE, snapped.z);
+                createTerrainTile(snapped.x + TERRAIN_TILE_SIZE, snapped.z);
+                createTerrainTile(snapped.x, snapped.z - TERRAIN_TILE_SIZE);
+                createTerrainTile(snapped.x, snapped.z + TERRAIN_TILE_SIZE);
+            }
+
+            // Function to build mound at position (vertical building)
+            function buildMoundAt(x, z) {
+                // Get the highest block at this position
+                let highestY = getHighestBlockAt(x, z);
+                
+                // If no blocks exist, start from ground level (0)
+                if (highestY < 0) {
+                    highestY = 0;
+                }
+                
+                // Build block one level higher
+                const newY = highestY;
+                createTerrainBlock(x, newY, z);
+                
+                // Build adjacent blocks to form a mound shape
+                // Create a cross pattern around the center
+                const offsets = [
+                    { dx: BLOCK_SIZE, dz: 0 },      // Right
+                    { dx: -BLOCK_SIZE, dz: 0 },     // Left
+                    { dx: 0, dz: BLOCK_SIZE },      // Forward
+                    { dx: 0, dz: -BLOCK_SIZE }      // Back
+                ];
+                
+                // Sometimes add diagonal blocks for natural mound shape
+                if (Math.random() > 0.7) {
+                    offsets.push(
+                        { dx: BLOCK_SIZE, dz: BLOCK_SIZE },
+                        { dx: -BLOCK_SIZE, dz: -BLOCK_SIZE },
+                        { dx: BLOCK_SIZE, dz: -BLOCK_SIZE },
+                        { dx: -BLOCK_SIZE, dz: BLOCK_SIZE }
+                    );
+                }
+                
+                offsets.forEach(offset => {
+                    const adjX = x + offset.dx;
+                    const adjZ = z + offset.dz;
+                    const adjHighestY = getHighestBlockAt(adjX, adjZ);
+                    const adjBaseY = adjHighestY < 0 ? 0 : adjHighestY;
+                    
+                    // Build adjacent block if it's at or below the center height
+                    // This creates a natural mound shape that grows upward
+                    if (adjBaseY <= newY && Math.random() > 0.3) {
+                        createTerrainBlock(adjX, adjBaseY, adjZ);
+                    }
+                });
+            }
+
+            // Movement controls
+            const moveSpeed = 0.2;
+            const keys = {};
+
+            // Keyboard event listeners
+            document.addEventListener('keydown', (event) => {
+                keys[event.code] = true;
+                
+                // Toggle build mode with 'T' key
+                if (event.code === 'KeyT' && !event.repeat) {
+                    buildMode = buildMode === 'expand' ? 'build' : 'expand';
+                    updateModeIndicator();
+                }
+            });
+
+            document.addEventListener('keyup', (event) => {
+                keys[event.code] = false;
+            });
+            
+            // Update mode indicator UI
+            function updateModeIndicator() {
+                const modeValue = document.getElementById('mode-value');
+                if (modeValue) {
+                    modeValue.textContent = buildMode.toUpperCase();
+                    modeValue.className = 'mode-value ' + (buildMode === 'build' ? 'build-mode' : '');
+                }
+            }
+            
+            // Initialize color picker UI
+            function initializeColorPicker() {
+                const colorSwatches = document.getElementById('color-swatches');
+                if (!colorSwatches) return;
+                
+                blockColors.forEach((colorData, index) => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch' + (index === 0 ? ' selected' : '');
+                    // Convert hex number to CSS color string
+                    const colorHex = '#' + colorData.color.toString(16).padStart(6, '0').toUpperCase();
+                    swatch.style.backgroundColor = colorHex;
+                    swatch.title = colorData.name;
+                    swatch.addEventListener('click', () => {
+                        // Remove selected class from all swatches
+                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+                        // Add selected class to clicked swatch
+                        swatch.classList.add('selected');
+                        // Update selected color
+                        selectedColor = colorData.color;
+                    });
+                    colorSwatches.appendChild(swatch);
+                });
+            }
+
+            // Mouse look controls
+            let isPointerLocked = false;
+            let pitch = 0;
+            let yaw = 0;
+
+            // Handle pointer lock and mouse click separately
+            let isPointerLockRequested = false;
+            
+            renderer.domElement.addEventListener('mousedown', (event) => {
+                if (event.button === 0) { // Left mouse button
+                    if (!isPointerLocked) {
+                        // First click: request pointer lock
+                        isPointerLockRequested = true;
+                        renderer.domElement.requestPointerLock();
+                    } else {
+                        // Pointer is locked, start terrain expansion
+                        isMouseDown = true;
+                        mouseDownTime = Date.now();
+                    }
+                }
+            });
+
+            renderer.domElement.addEventListener('mouseup', (event) => {
+                if (event.button === 0) {
+                    isMouseDown = false;
+                    lastExpandTime = 0;
+                    
+                    // Finalize current batch when mouse is released
+                    // This groups all actions that happened while mouse was held down
+                    finalizeCurrentBatch();
+                    
+                    // If pointer lock was requested but not yet active, don't do terrain expansion
+                    if (!isPointerLocked && isPointerLockRequested) {
+                        isPointerLockRequested = false;
+                    }
+                }
+            });
+
+
+            // Mouse sensitivity
+            const mouseSensitivity = 0.002;
+            
+            document.addEventListener('mousemove', (event) => {
+                if (isPointerLocked) {
+                    // When pointer is locked, use movementX/Y for rotation
+                    // Only update yaw for horizontal movement (left/right)
+                    yaw -= event.movementX * mouseSensitivity;
+                    
+                    // Only update pitch for vertical movement (up/down)
+                    pitch -= event.movementY * mouseSensitivity;
+                    
+                    // Clamp pitch to prevent flipping
+                    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+                }
+            });
+
+            // Check if clicking on existing terrain
+            function checkTerrainHit() {
+                raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                
+                // First check if we hit any terrain blocks
+                const blockMeshes = Array.from(terrainBlocks.values()).map(b => b.block);
+                if (blockMeshes.length > 0) {
+                    const blockIntersects = raycaster.intersectObjects(blockMeshes);
+                    if (blockIntersects.length > 0) {
+                        return { type: 'block', intersect: blockIntersects[0] };
+                    }
+                }
+                
+                // Check if we hit floor tiles
+                const floorMeshes = Array.from(terrainTiles.values()).map(t => t.floor);
+                if (floorMeshes.length > 0) {
+                    const floorIntersects = raycaster.intersectObjects(floorMeshes);
+                    if (floorIntersects.length > 0) {
+                        return { type: 'floor', intersect: floorIntersects[0] };
+                    }
+                }
+                
+                // Check ground plane (empty space)
+                const groundIntersects = raycaster.intersectObject(groundPlane);
+                if (groundIntersects.length > 0) {
+                    return { type: 'ground', intersect: groundIntersects[0] };
+                }
+                
+                return null;
+            }
+
+            // Update terrain expansion while mouse is held (called from animation loop)
+            function updateTerrainExpansion() {
+                if (isMouseDown && isPointerLocked) {
+                    const currentTime = Date.now();
+                    const timeSinceMouseDown = currentTime - mouseDownTime;
+                    const timeSinceLastExpand = currentTime - lastExpandTime;
+                    
+                    // Check if enough time has passed since mouse down
+                    if (timeSinceMouseDown >= EXPAND_DELAY) {
+                        const hit = checkTerrainHit();
+                        
+                        if (hit) {
+                            const point = hit.intersect.point;
+                            
+                            if (buildMode === 'build') {
+                                // Build mode: only build vertically, regardless of what we hit
+                                if (hit.type === 'block' || hit.type === 'floor') {
+                                    if (timeSinceLastExpand >= MOUND_BUILD_INTERVAL) {
+                                        buildMoundAt(point.x, point.z);
+                                        lastExpandTime = currentTime;
+                                    }
+                                } else if (hit.type === 'ground') {
+                                    // On ground plane, build from ground level
+                                    if (timeSinceLastExpand >= MOUND_BUILD_INTERVAL) {
+                                        buildMoundAt(point.x, point.z);
+                                        lastExpandTime = currentTime;
+                                    }
+                                }
+                            } else {
+                                // Expand mode: only expand horizontally (create floor tiles)
+                                if (hit.type === 'ground' || hit.type === 'floor') {
+                                    // Expand on empty space or existing floor tiles
+                                    if (timeSinceLastExpand >= EXPAND_INTERVAL) {
+                                        expandTerrainAt(point.x, point.z);
+                                        lastExpandTime = currentTime;
+                                    }
+                                }
+                                // In expand mode, ignore blocks (don't build upward)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Movement function
+            function handleMovement() {
+                // Calculate forward direction directly from yaw (horizontal rotation only)
+                // This ensures horizontal movement is independent of vertical rotation (pitch)
+                // In Three.js, forward is -Z, so we negate the Z component
+                const direction = new THREE.Vector3();
+                direction.x = -Math.sin(yaw);  // Forward direction in X
+                direction.z = -Math.cos(yaw);  // Forward direction in Z (negated for Three.js)
+                direction.y = 0;               // No vertical component for horizontal movement
+                direction.normalize();
+
+                // Calculate right direction (perpendicular to forward, horizontal only)
+                // Right = forward × up (cross product in right-handed coordinate system)
+                const right = new THREE.Vector3();
+                right.x = Math.cos(yaw);   // Right direction in X
+                right.z = -Math.sin(yaw);  // Right direction in Z
+                right.y = 0;               // No vertical component
+                right.normalize();
+
+                // Update camera rotation for viewing (separate from movement)
+                camera.rotation.y = yaw;    // Horizontal rotation (left/right)
+                camera.rotation.x = pitch;  // Vertical rotation (up/down)
+                camera.rotation.z = 0;      // No roll
+
+                // Movement vectors
+                const moveVector = new THREE.Vector3();
+
+                // Forward/Backward (W/S)
+                if (keys['KeyW']) {
+                    moveVector.add(direction);
+                }
+                if (keys['KeyS']) {
+                    moveVector.sub(direction);
+                }
+
+                // Left/Right (A/D)
+                if (keys['KeyA']) {
+                    moveVector.sub(right);
+                }
+                if (keys['KeyD']) {
+                    moveVector.add(right);
+                }
+
+                // Normalize movement vector to maintain consistent speed in all directions
+                if (moveVector.length() > 0) {
+                    moveVector.normalize();
+                    moveVector.multiplyScalar(moveSpeed);
+                }
+
+                // Up/Down (Space/Shift)
+                if (keys['Space']) {
+                    moveVector.y += moveSpeed;
+                }
+                if (keys['ShiftLeft'] || keys['ShiftRight']) {
+                    moveVector.y -= moveSpeed;
+                }
+
+                // Apply movement
+                camera.position.add(moveVector);
+
+                // Prevent camera from going below floor
+                if (camera.position.y < MIN_CAMERA_HEIGHT) {
+                    camera.position.y = MIN_CAMERA_HEIGHT;
+                }
+            }
+
+            // Update player count display
+            function updatePlayerCount(count = 1) {
+                const playerCountValue = document.getElementById('player-count-value');
+                if (playerCountValue) {
+                    playerCountValue.textContent = count;
+                }
+            }
+            
+            // Handle cloud menu button click
+            const cloudButton = document.getElementById('cloud-button');
+            if (cloudButton) {
+                cloudButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation(); // Prevent triggering canvas pointer lock
+                    placeCloudAtCamera();
+                });
+            }
+            
+            // Handle sun menu button click
+            const sunButton = document.getElementById('sun-button');
+            if (sunButton) {
+                sunButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation(); // Prevent triggering canvas pointer lock
+                    placeSunAtCamera();
+                });
+            }
+            
+            // Keyboard shortcut for undo (Ctrl+Z or Cmd+Z)
+            document.addEventListener('keydown', (event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === 'z' && !event.repeat) {
+                    event.preventDefault();
+                    undoLastAction();
+                }
+            });
+            
+            // Place cloud at camera's look direction
+            function placeCloudAtCamera() {
+                // Place cloud in front of camera in the sky background
+                const distance = 30; // Distance in front of camera
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                
+                // Calculate position in front of camera
+                const cloudPos = new THREE.Vector3();
+                cloudPos.copy(camera.position);
+                cloudPos.add(direction.multiplyScalar(distance));
+                
+                // Place cloud at a fixed height in the sky (background level)
+                cloudPos.y = 20 + Math.random() * 10; // Height between 20-30 units
+                
+                createCloud(cloudPos.x, cloudPos.y, cloudPos.z);
+            }
+            
+            // Place sun at camera's look direction
+            function placeSunAtCamera() {
+                // Place sun in front of camera in the sky background
+                const distance = 35; // Distance in front of camera
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                
+                // Calculate position in front of camera
+                const sunPos = new THREE.Vector3();
+                sunPos.copy(camera.position);
+                sunPos.add(direction.multiplyScalar(distance));
+                
+                // Place sun at a fixed height in the sky (background level)
+                sunPos.y = 25 + Math.random() * 10; // Height between 25-35 units
+                
+                createSun(sunPos.x, sunPos.y, sunPos.z);
+            }
+            
+            // Handle pointer lock change
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = document.pointerLockElement === renderer.domElement;
+                if (!isPointerLocked) {
+                    // Stop terrain expansion if pointer is unlocked
+                    isMouseDown = false;
+                    lastExpandTime = 0;
+                    isPointerLockRequested = false;
+                }
+            });
+            
+            // Show UI after a timeout if Socket.IO is not available or initial state hasn't been received
+            // This provides a fallback in case of connection issues
+            setTimeout(() => {
+                if (!hasReceivedInitialState && document.getElementById('loading').style.display !== 'none') {
+                    console.warn('⚠️ Initial state not received after timeout, showing UI anyway');
+                    // Check if socket exists but isn't connected
+                    if (socket && !socket.connected) {
+                        const warning = document.getElementById('connection-warning');
+                        if (warning) {
+                            warning.classList.add('show');
+                        }
+                        console.error('❌ Server not connected! Progress will not be saved.');
+                    }
+                    hasReceivedInitialState = true; // Allow interactions even without state
+                    showUI();
+                }
+            }, 5000); // 5 second timeout
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                handleMovement();
+                updateTerrainExpansion();
+                updateClouds(); // Update cloud rotations to face camera
+                updateSuns(); // Update sun rotations to face camera
+                renderer.render(scene, camera);
+            }
+            animate();
+        });
+    </script>
+</body>
+</html>
